@@ -1,0 +1,83 @@
+
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import OneHotEncoder
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import mean_squared_error, r2_score
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.preprocessing import MinMaxScaler
+
+print("")
+print("Part A")
+
+df_wh = pd.read_csv("weight-height.csv")
+col = ["Height", "Weight"]
+
+scaler = MinMaxScaler()
+df_wh[col] = scaler.fit_transform(df_wh[col])
+X = df_wh[["Height"]].to_numpy()
+Y = df_wh[["Weight"]].to_numpy()
+X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.2, random_state=67)
+model_wh = LinearRegression()
+model_wh.fit(X_train, Y_train)
+Y_pred = model_wh.predict(X_test)
+print("\nWeight-Height Linear Regression (Sklearn):")
+print("MSE:", mean_squared_error(Y_test, Y_pred))
+print("R2 Score:", r2_score(Y_test, Y_pred))
+print("Coefficient:", model_wh.coef_[0])
+print("Intercept:", model_wh.intercept_)
+plt.scatter(X_test[:20], Y_test[:20], color="red", label="Datapoints")
+plt.plot(X_test[:20], Y_pred[:20], color="blue", label="Linear Regression")
+plt.legend()
+plt.show()
+X_gd = df_wh['Height'].values.reshape(-1,1)
+Y_gd = df_wh['Weight'].values.reshape(-1,1)
+X_gd = (X_gd - np.mean(X_gd)) / np.std(X_gd)
+Y_gd = (Y_gd - np.mean(Y_gd)) / np.std(Y_gd)
+X_gd = np.hstack((np.ones((X_gd.shape[0], 1)), X_gd))
+theta = np.zeros((2,1))
+learning_rate = 0.01
+iterations = 1000
+mseh = []
+for i in range(iterations):
+    y_pred = np.dot(X_gd, theta)
+    mse = np.mean((y_pred - Y_gd)**2)
+    mseh.append(mse)
+    gradient = np.dot(X_gd.T, (y_pred - Y_gd)) / len(Y_gd)
+    theta -= learning_rate * gradient
+    if i % 100 == 0:
+        print(f"Iteration {i}: MSE = {mse}")
+print("Manual Gradient Descent Theta:", theta.flatten())
+plt.plot(range(iterations), mseh)
+plt.xlabel('Iterations')
+plt.ylabel('Mean Squared Error (MSE)')
+plt.title('MSE vs Iterations')
+plt.show()
+
+print("")
+print("Part B")
+print("")
+
+df = pd.read_csv("Food_delivery_times.csv")
+print(df.columns)
+
+categorical_features = ['Traffic_Level', 'Weather']
+encoder = OneHotEncoder(drop='first', sparse_output=False)  
+encoded_features = encoder.fit_transform(df[categorical_features])
+encoded_df = pd.DataFrame(encoded_features, columns=encoder.get_feature_names_out(categorical_features))
+
+X = pd.concat([df[['Distance_km', 'Preparation_Time_min']], encoded_df], axis=1)
+y = df['Delivery_Time_min']
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+model = LinearRegression()
+model.fit(X_train, y_train)
+
+y_pred = model.predict(X_test)
+print("Mean Squared Error:", mean_squared_error(y_test, y_pred))
+print("R² Score:", r2_score(y_test, y_pred))
+
+coefficients = pd.DataFrame({'Feature': X.columns, 'Coefficient': model.coef_})
+print(coefficients)
